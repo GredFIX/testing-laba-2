@@ -1,50 +1,109 @@
 import pytest
-from calc_salary_bonus import calc_bonus
+import calc_salary_bonus as calc
+from allpairspy import AllPairs
+
+salaries = list(range(68000, 751001, 1000))
+levels = list(range(6, 19))
+perf_results = list(round(x * 1.0, 1) for x in range(1, 5))
+parameters = [salaries, levels, perf_results]
+
+for parameter in parameters:
+    parameter.extend(["foo", None])
+
+pair_for_test = [pair for pair in AllPairs(parameters)]
 
 
 @pytest.mark.parametrize(
-    "salary, pref_review, level, expected_error",
+    "salary, expected_error",
     [
-        (60000, 1, 7, ValueError),
-        (800000, 1, 7, ValueError),
-        (150000, 6, 7, ValueError),
-        (150000, 0.5, 7, ValueError),
-        (150000, 1, 20, ValueError),
-        (150000, 1, 5, ValueError),
-        (150000.5, 1, 7, TypeError),
-        ("foo", 1, 7, TypeError),
-        (150000, "foo", 7, TypeError),
-        (150000, 1, "foo", TypeError),
-    ],
+        (50000, ValueError),
+        (80000.5, TypeError),
+        (800000, ValueError),
+        ("foo", TypeError),
+        (None, TypeError)
+    ]
 )
-def test_calculate_salary_bonus_error(salary, pref_review, level, expected_error):
+def test_validate_salary_error(salary, expected_error):
     with pytest.raises(expected_error):
-        calc_bonus(salary, pref_review, level)
+        calc.validate_salary(salary)
 
 
 @pytest.mark.parametrize(
-    "salary, pref_review, level, expected_result",
+    "salary, expected_result",
     [
-        (100000, 1, 17, 0),
-        (100000, 5, 14, 230000),
-        (100000, 2, 7, 26250),
-        (100000, 3, 17, 120000),
-        (100000, 2.5, 11, 55000),
-        (100000, 3.5, 11, 165000),
-        (150000, 1, 11, 0),
-        (150000, 5, 7, 315000),
-        (150000, 3, 14, 172500),
-        (150000, 2.5, 7, 78750),
-        (150000, 3.5, 17, 270000),
-        (400000, 5, 17, 960000),
-        (400000, 2, 14, 115000),
-        (400000, 3, 7, 420000),
-        (400000, 2.5, 17, 240000),
-        (750000, 1, 14, 0),
-        (750000, 5, 11, 1650000),
-        (750000, 2, 17, 225000),
-        (750000, 3.5, 7, 1181250),
-    ],
+        (75000, None),
+        (500000, None),
+        (750000, None),
+    ]
 )
-def test_calculate_salary_bonus(salary, pref_review, level, expected_result):
-    assert expected_result == calc_bonus(salary, pref_review, level)
+def test_validate_salary_error(salary, expected_result):
+    assert calc.validate_salary(salary) == expected_result
+
+
+@pytest.mark.parametrize(
+    "pref_review, expected_result",
+    [
+        (1, 0),
+        (2, 0.25),
+        (2.5, 0.5),
+        (3, 1),
+        (3.5, 1.5),
+        (5, 2),
+    ]
+)
+def test_pref_review(pref_review, expected_result):
+    assert calc.calc_bonus_modifier(pref_review) == expected_result
+
+
+@pytest.mark.parametrize(
+    "pref_review, expected_error",
+    [
+        (0, ValueError),
+        (6, ValueError),
+        ("foo", TypeError),
+        (None, TypeError)
+    ]
+)
+def test_pref_review_error(pref_review, expected_error):
+    with pytest.raises(expected_error):
+        calc.calc_bonus_modifier(pref_review)
+
+
+@pytest.mark.parametrize(
+    "level, expected_result",
+    [
+        (7, 1.05),
+        (10, 1.1),
+        (13, 1.15),
+        (17, 1.2)
+    ]
+)
+def test_level(level, expected_result):
+    assert calc.calc_level_bonus(level) == expected_result
+
+
+@pytest.mark.parametrize(
+    "level, expected_error",
+    [
+        (6, ValueError),
+        (18, ValueError),
+        ("foo", TypeError),
+        (None, TypeError)
+    ]
+)
+def test_level_error(level, expected_error):
+    with pytest.raises(expected_error):
+        calc.calc_level_bonus(level)
+
+
+@pytest.mark.parametrize(
+    "salary, pref_review, level",
+    pair_for_test,
+)
+def test_calculate_salary_bonus(salary, pref_review, level):
+    errors = (ValueError, TypeError)
+    try:
+        with pytest.raises(errors):
+            calc.calc_bonus(salary, pref_review, level)
+    except:
+        assert calc_bonus(salary, pref_review, level) not in errors, "Бонус к зарплате расчитан без ошибок"
